@@ -56,9 +56,9 @@ undefinedAttribute =
       attribute hreflang { atomLanguageTag }? ,
       attribute title { text }? ,
       attribute length { text }? ,
-      attribute opds:facetGroup { text }? ,
-      attribute opds:activeFacet { "true" }? ,
-    ((attribute rel { "http://opds-spec.org/acquisition/buy" }, opdsPrice+ )
+    ((attribute rel { "http://opds-spec.org/facet" }, (attribute opds:facetGroup { text }? & attribute opds:activeFacet { "true" }? ))
+      |
+     (attribute rel { "http://opds-spec.org/acquisition/buy" }, opdsPrice+ )
      |
      (attribute rel { OPDSUrisExceptBuy }, opdsPrice*)
      |
