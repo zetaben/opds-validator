@@ -1,13 +1,13 @@
 <project name="OPDSValidator" default="all">
 	<target name="build" >
 		<mkdir dir="classes"/>
-		<javac  includeantruntime="false"  classpath="classes:/usr/share/jing/lib/jing.jar:/usr/share/relaxng-datatype/lib/relaxngDatatype.jar" srcdir="src" destdir="classes">
+		<javac  includeantruntime="false"  classpath="classes:/usr/share/jing/lib/jing.jar:/usr/share/relaxng-datatype/lib/relaxngDatatype.jar" srcdir="src" destdir="classes" excludes="json/test/**">
 		</javac>
 	</target>
 
 	<target name="clean">
-		<delete>
-			<fileset dir="classes" includes="*.class" />
+		<delete includeemptydirs="yes">
+			<fileset dir="classes" includes="**" excludes=".gitignore"/>
 		</delete>
 
 	</target>
