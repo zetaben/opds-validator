@@ -24,24 +24,65 @@ import java.util.List;
 
 class Validator {
 
-	public static void  main(String[] args) {
+	private String opds_version="1.0";
+	private String encoding;
+	private ErrorHandlerImpl eh;
 
+	public void SetErrorHandler(ErrorHandlerImpl er){this.eh=er;}
+	public void SetEncoding(String e){this.encoding=e;}
+	public void SetOPDSVersion(String e){this.opds_version=e;}
+
+	/** Validate an OPDS Stream 
+	 * @params f File to be validated
+	 * @return boolean Had error while validating
+	 */
+	public boolean validate(String [] args){
+	
 		SchemaReader sr = CompactSchemaReader.getInstance();
-		ErrorHandlerImpl eh = new ErrorHandlerImpl(System.out);
 		PropertyMapBuilder properties = new PropertyMapBuilder();
 		properties.put(ValidateProperty.ERROR_HANDLER, eh);
-		boolean hadError;
+		boolean hadError = false;
+
+		try {
+			ValidationDriver driver = new ValidationDriver(properties.toPropertyMap(), sr);
+			InputSource in = ValidationDriver.uriOrFileInputSource("res/opds_v"+opds_version+".rnc");
+			if (encoding != null)
+				in.setEncoding(encoding);
+			if (driver.loadSchema(in)) {
+				for (int i = 0; i < args.length; i++) {
+					if (!driver.validate(ValidationDriver.uriOrFileInputSource(args[i])))
+						hadError = true;
+				}
+			}
+			else
+				hadError = true;
+		}
+		catch (SAXException e) {
+			hadError = true;
+			eh.printException(e);
+		}
+		catch (IOException e) {
+			hadError = true;
+			eh.printException(e);
+		}
+		return hadError;
+	}
+
+
+	public static void  main(String[] args) {
+
 		String encoding=null;
 		OptionParser op = new OptionParser("v:e:", args);
-		String version="1.0";
+		String opds_version="1.0";
+		ErrorHandlerImpl eh = new JSONErrorHandlerImpl(System.out);
 
 		try {
 			while (op.moveToNextOption()) {
 				switch (op.getOptionChar()) {
 					case 'v':
-						version = op.getOptionArg();
-						if (!(new File("res/opds_v"+version+".rnc").exists())){
-							System.err.println("invalid OPDS Version "+version);
+						opds_version = op.getOptionArg();
+						if (!(new File("res/opds_v"+opds_version+".rnc").exists())){
+							System.err.println("invalid OPDS Version "+opds_version);
 							throw new OptionParser.InvalidOptionException();
 						}
 
@@ -64,30 +105,14 @@ class Validator {
 		    args = op.getRemainingArgs();
 
 
-
-		try {
-			ValidationDriver driver = new ValidationDriver(properties.toPropertyMap(), sr);
-			InputSource in = ValidationDriver.uriOrFileInputSource("res/opds_v"+version+".rnc");
-			if (encoding != null)
-				in.setEncoding(encoding);
-			if (driver.loadSchema(in)) {
-				for (int i = 0; i < args.length; i++) {
-					if (!driver.validate(ValidationDriver.uriOrFileInputSource(args[i])))
-						hadError = true;
-				}
-			}
-			else
-				hadError = true;
+		Validator v=new Validator();
+		if (encoding!=null){
+		v.SetEncoding(encoding);
 		}
-		catch (SAXException e) {
-			hadError = true;
-			eh.printException(e);
-		}
-		catch (IOException e) {
-			hadError = true;
-			eh.printException(e);
-		}
-
+		v.SetOPDSVersion(opds_version);
+		v.SetErrorHandler(eh);
+		v.validate(args);
+		eh.close();
 	}
 
 }
