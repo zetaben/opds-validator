@@ -5,9 +5,19 @@
 		</javac>
 	</target>
 
+	<target name="jar" depends="build">
+		<jar basedir="classes" destfile="OPDSValidator.jar" excludes=".gitignore">
+			<manifest>
+				<attribute name="Main-Class" value="com.feedbooks.opds.Validator"/>
+				<attribute name="Class-Path" value="jing.jar relaxngDatatype.jar"/>
+			</manifest>
+		</jar>
+	</target>
+
 	<target name="clean">
 		<delete includeemptydirs="yes">
 			<fileset dir="classes" includes="**" excludes=".gitignore"/>
+			<fileset file="OPDSValidator.jar"/>
 		</delete>
 
 	</target>
