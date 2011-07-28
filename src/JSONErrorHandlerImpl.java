@@ -49,13 +49,11 @@ public class JSONErrorHandlerImpl extends ErrorHandlerImpl {
 
 
 	public void warning(SAXParseException e) throws SAXParseException {
-		print(format("warning",
-					new Object[] { formatMessage(e), formatLocation(e) }));
+		printSAXParseException("warning",e);
 	}
 
 	public void error(SAXParseException e) {
-		print(format("error",
-					new Object[] { formatMessage(e), formatLocation(e) }));
+		printSAXParseException("error",e);
 	}
 
 	public void fatalError(SAXParseException e) throws SAXParseException {
@@ -63,17 +61,11 @@ public class JSONErrorHandlerImpl extends ErrorHandlerImpl {
 	}
 
 	public void printException(Throwable e) {
-		String loc;
-		if (e instanceof SAXParseException)
-			loc = formatLocation((SAXParseException)e);
-		else
-			loc = "";
 		String message;
 		if (e instanceof SAXException)
-			message = formatMessage((SAXException)e);
+			printSAXParseException("fatal",(SAXParseException)e);
 		else
-			message = formatMessage(e);
-		print(format("fatal", new Object[] { message, loc }));
+			print("fatal :"+formatMessage(e));
 	}
 
 	public void print(String message) {
@@ -90,6 +82,32 @@ public class JSONErrorHandlerImpl extends ErrorHandlerImpl {
 
 	private String format(String key, Object[] args) {
 		return MessageFormat.format(getString(key), args);
+	}
+
+	private void printSAXParseException(String severity,SAXParseException e){
+
+		try{
+			JSONObject ret=new JSONObject().put("severity",severity);
+
+			String systemId = e.getSystemId();
+			if (systemId!=null){
+				ret.put("location", UriOrFile.uriToUriOrFile(systemId));
+			}
+			int n = e.getLineNumber();
+			if (n>=0){
+				ret.put("line",new Integer(n));
+			}
+			n = e.getColumnNumber();
+			if (n>=0){
+				ret.put("column",new Integer(n));
+			}
+			ret.put("message",formatMessage(e));
+			errors.put(ret);
+
+		}catch(JSONException ep){
+			print("JSON Object failed");
+		}
+
 	}
 	private String formatLocation(SAXParseException e) {
 		String systemId = e.getSystemId();
