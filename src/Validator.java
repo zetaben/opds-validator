@@ -1,3 +1,4 @@
+package com.feedbooks.opds;
 
 import com.thaiopensource.util.Localizer;
 import com.thaiopensource.util.OptionParser;

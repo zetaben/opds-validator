@@ -1,3 +1,4 @@
+package com.feedbooks.opds;
 
 import java.util.ResourceBundle;
 import java.text.MessageFormat;
