@@ -72,13 +72,19 @@ class Validator {
 	public static void  main(String[] args) {
 
 		String encoding=null;
-		OptionParser op = new OptionParser("v:e:", args);
+		OptionParser op = new OptionParser("v:e:f:", args);
 		String opds_version="1.0";
-		ErrorHandlerImpl eh = new JSONErrorHandlerImpl(System.out);
+		ErrorHandlerImpl eh = new ErrorHandlerImpl(System.out);
 
 		try {
 			while (op.moveToNextOption()) {
 				switch (op.getOptionChar()) {
+					case 'f': 
+						String fmt=op.getOptionArg();
+							if(fmt.equalsIgnoreCase("json")){
+								eh=new JSONErrorHandlerImpl(System.out);
+							}
+						break;
 					case 'v':
 						opds_version = op.getOptionArg();
 						if (!(new File("res/opds_v"+opds_version+".rnc").exists())){
