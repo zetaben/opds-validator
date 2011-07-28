@@ -21,6 +21,6 @@
 		</delete>
 
 	</target>
-	<target name="all" depends="build"/>
+	<target name="all" depends="jar"/>
 
 </project>

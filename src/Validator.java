@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-class Validator {
+public class Validator {
 
 	private String opds_version="1.0";
 	private String encoding;
@@ -73,7 +73,7 @@ class Validator {
 	public static void  main(String[] args) {
 
 		String encoding=null;
-		OptionParser op = new OptionParser("v:e:f:", args);
+		OptionParser op = new OptionParser("hv:e:f:", args);
 		String opds_version="1.0";
 		ErrorHandlerImpl eh = new ErrorHandlerImpl(System.out);
 
@@ -96,6 +96,14 @@ class Validator {
 						break;
 					case 'e':
 						encoding = op.getOptionArg();
+						break;
+					case 'h':
+						eh.print("OPDSValidator usage: java -jar OPDSValidator [options] file");
+						eh.print("Options:");
+						eh.print("-h\t\tThis help message");
+						eh.print("-v opds_version\tOPDSVersion to use (default 1.0)");
+						eh.print("-e encoding\tFile encoding (passed to jing)");
+						eh.print("-f format\tError output format (default text, avail : json)");
 						break;
 
 				}
