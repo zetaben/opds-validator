@@ -44,6 +44,9 @@ public class Validator {
 		properties.put(ValidateProperty.ERROR_HANDLER, eh);
 		boolean hadError = false;
 
+		OPDSRequirementsValidator opds_val=new OPDSRequirementsValidator();
+		opds_val.setErrorHandler(eh);
+
 		try {
 			ValidationDriver driver = new ValidationDriver(properties.toPropertyMap(), sr);
 			InputSource in = ValidationDriver.uriOrFileInputSource("res/opds_v"+opds_version+".rnc");
@@ -51,7 +54,7 @@ public class Validator {
 				in.setEncoding(encoding);
 			if (driver.loadSchema(in)) {
 				for (int i = 0; i < args.length; i++) {
-					if (!driver.validate(ValidationDriver.uriOrFileInputSource(args[i])))
+					if (!driver.validate(ValidationDriver.uriOrFileInputSource(args[i])) || !opds_val.validate(ValidationDriver.uriOrFileInputSource(args[i])))
 						hadError = true;
 				}
 			}
