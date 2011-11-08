@@ -5,30 +5,38 @@ import org.xml.sax.*;
 import org.xml.sax.helpers.*;
 
 
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+
 public class OPDSRequirementsValidator {
 
 
 	public boolean validate(InputSource l)  {
 		try{
 
-			XMLFilter[] filters={new OPDSRequirementLink(),new OPDSRequirementAcquisitionType(), new OPDSRequirementSearchRel(),new OPDSRequirementAcquisitionOrNavigation()};
+			XMLFilter[] filters={
+				/*Very high priority*/
+				new OPDSRequirementLink(),new OPDSRequirementAcquisitionType(), new OPDSRequirementSearchRel(),new OPDSRequirementAcquisitionOrNavigation(),
+				/*High priority*/
+				new OPDSRequirementPlainTextSummary(), new OPDSRequirementImageRel(), new OPDSRequirementImageBitmap(), new OPDSRequirementDublinCore()
+			};
 
 			XMLFilter tail = filters[0];
 			XMLFilter head = tail;
-			
+
 
 			for(int i=1;i<filters.length;i++ ) {
-			XMLFilter new_tail = filters[i];
-			tail.setParent(new_tail);
-			tail=new_tail;
+				XMLFilter new_tail = filters[i];
+				tail.setParent(new_tail);
+				tail=new_tail;
 			}
-			
+
 			tail.setParent(XMLReaderFactory.createXMLReader());
 			if (getErrorHandler()!=null) {
-			head.setErrorHandler(getErrorHandler());
+				head.setErrorHandler(getErrorHandler());
 			}else{
-			DefaultHandler handler = new DefaultHandler();
-			head.setErrorHandler(handler);
+				DefaultHandler handler = new DefaultHandler();
+				head.setErrorHandler(handler);
 			}
 			head.parse(l);
 			return true;
@@ -204,7 +212,7 @@ class OPDSRequirementAcquisitionOrNavigation extends OPDSRequirementFilter {
 				if(isNavigationFeed() && acquisition_links_count > 0){
 					error(new SAXParseException("Feed CAN'T be an acquisition and navigation feed (found an acquisition link in a navigation feed)",getLocator()));
 				}
-			
+
 			}
 		}
 
@@ -229,9 +237,163 @@ class OPDSRequirementAcquisitionOrNavigation extends OPDSRequirementFilter {
 	private boolean isAcquisitionFeed(){
 		return isTyped() && acquisition_feed;
 	}
-	
+
 	private boolean isNavigationFeed(){
 		return isTyped() && !acquisition_feed;
+	}
+
+}
+
+/* REQUIREMENT : atom:summary must be plain text */
+class OPDSRequirementPlainTextSummary extends OPDSRequirementFilter {
+
+	private boolean in_summary;
+	private StringBuffer summary;
+	public void startElement (String uri, String name, String qName, Attributes atts) throws SAXException
+	{
+		if(in_summary){
+			error(new SAXParseException("Summary MUST be plain text",getLocator()));
+		}
+		if(name.equalsIgnoreCase("summary")){
+			in_summary=true;
+			summary=new StringBuffer();
+		}
+
+		super.startElement(uri,name,qName,atts);
+	}
+
+	public void characters(char[] ch, int start, int length) throws SAXException {
+		if(in_summary){
+			summary.append(ch,start,length);
+			super.characters( ch, start, length);
+		}
+	}
+
+	public void endElement (String uri, String name, String qName) throws SAXException
+	{
+		if(name.equalsIgnoreCase("summary")){
+			in_summary=false;
+			if (Pattern.matches(".*<.*>.*",summary)){ 
+				error(new SAXParseException("Summary MUST be plain text",getLocator()));
+			}
+		}
+
+		super.endElement(uri,name,qName);
+	}
+}
+
+
+/* REQUIREMENT : Catalogs should use the right rel for images  */
+class OPDSRequirementImageRel extends OPDSRequirementFilter {
+
+	public void startElement (String uri, String name, String qName, Attributes atts) throws SAXException
+	{
+		if(name.equalsIgnoreCase("link")){
+			String rel=atts.getValue("rel");
+
+			if(rel!=null && (rel.contains("http://opds-spec.org/cover") || rel.contains("http://opds-spec.org/thumbnail") || rel.contains("x-stanza-cover-image"))){
+				error(new SAXParseException("Images MUST use valid OPDS 1.0+ rel (http://opds-spec.org/image...)",getLocator()));
+			}
+		}
+
+		super.startElement(uri,name,qName,atts);
+	}
+
+}
+
+/* REQUIREMENT : Linked image resources must be a bitmap  */
+class OPDSRequirementImageBitmap extends OPDSRequirementFilter {
+
+	public void startElement (String uri, String name, String qName, Attributes atts) throws SAXException
+	{
+		if(name.equalsIgnoreCase("link")){
+			String rel=atts.getValue("rel");
+			String type=atts.getValue("type");
+
+			if(rel!=null && (rel.contains("http://opds-spec.org/image") && (type==null || (
+								!type.contains("image/png") &&
+								!type.contains("image/jpeg") &&
+								!type.contains("image/jpg") &&
+								!type.contains("image/gif") &&
+								!type.contains("image/bmp")
+								) ) ) ){
+				error(new SAXParseException("Images MUST be bitmaps",getLocator()));
+								}
+		}
+
+		super.startElement(uri,name,qName,atts);
+	}
+
+}
+
+/* REQUIREMENT : Check for dc elements usages that should only be represented with Atom (dc:creator, dc:title, dc:subject) */
+class OPDSRequirementDublinCore extends OPDSRequirementFilter {
+
+	private boolean in_entry;
+	private boolean creator;
+	private boolean title;
+	private boolean subject;
+	private boolean atom_title;
+	private boolean atom_author;
+	private boolean atom_category;
+	public void startElement (String uri, String name, String qName, Attributes atts) throws SAXException
+	{
+		if(name.equalsIgnoreCase("entry")){
+			in_entry=true;
+		}
+		if(in_entry){
+			if(uri.contains("dc")){
+				if(name.equalsIgnoreCase("creator")){
+					creator=true;
+				}
+				if(name.equalsIgnoreCase("subject")){
+					subject=true;
+				}
+				if(name.equalsIgnoreCase("title")){
+					System.err.println("FOIND dc:tit");
+
+					title=true;
+				}
+			}else{
+				if(name.equalsIgnoreCase("title")){
+					atom_title=true;
+				}
+				if(name.equalsIgnoreCase("author")){
+					atom_title=true;
+				}
+				if(name.equalsIgnoreCase("category")){
+					atom_category=true;
+				}
+			}
+		}
+
+		super.startElement(uri,name,qName,atts);
+	}
+
+	public void endElement (String uri, String name, String qName) throws SAXException
+	{
+		if(name.equalsIgnoreCase("entry")){
+			in_entry=false;
+
+			if(title && !atom_title){
+				error(new SAXParseException("entries MUST use atom:title instead of dc:title",getLocator()));
+			}
+			if(subject && !atom_category){
+				error(new SAXParseException("entries MUST use atom:category instead of dc:subject",getLocator()));
+			}
+			if(creator && !atom_author){
+				error(new SAXParseException("entries MUST use atom:author instead of dc:creator",getLocator()));
+			}
+
+			creator=false;
+			title=false;
+			subject=false;
+			atom_category=false;
+			atom_title=false;
+			atom_author=false;
+		}
+
+		super.endElement(uri,name,qName);
 	}
 
 }
