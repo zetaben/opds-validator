@@ -18,7 +18,9 @@ public class OPDSRequirementsValidator {
 				/*Very high priority*/
 				new OPDSRequirementLink(),new OPDSRequirementAcquisitionType(), new OPDSRequirementSearchRel(),new OPDSRequirementAcquisitionOrNavigation(),
 				/*High priority*/
-				new OPDSRequirementPlainTextSummary(), new OPDSRequirementImageRel(), new OPDSRequirementImageBitmap(), new OPDSRequirementDublinCore()
+				new OPDSRequirementPlainTextSummary(), new OPDSRequirementImageRel(), new OPDSRequirementImageBitmap(), new OPDSRequirementDublinCore(),
+				/*Normal priority*/ 
+				new OPDSRequirementContentDuplication(), new OPDSRequirementRootLink(), new OPDSRequirementLinkProfileKind()
 			};
 
 			XMLFilter tail = filters[0];
@@ -265,8 +267,8 @@ class OPDSRequirementPlainTextSummary extends OPDSRequirementFilter {
 	public void characters(char[] ch, int start, int length) throws SAXException {
 		if(in_summary){
 			summary.append(ch,start,length);
-			super.characters( ch, start, length);
 		}
+		super.characters( ch, start, length);
 	}
 
 	public void endElement (String uri, String name, String qName) throws SAXException
@@ -396,4 +398,138 @@ class OPDSRequirementDublinCore extends OPDSRequirementFilter {
 		super.endElement(uri,name,qName);
 	}
 
+}
+
+
+/*REQUIREMENT : atom:content shouldn't duplicate atom:title & atom:summary */
+class OPDSRequirementContentDuplication extends OPDSRequirementFilter {
+
+	private boolean in_summary;
+	private boolean in_content;
+	private boolean in_title;
+	private StringBuffer summary;
+	private StringBuffer content;
+	private StringBuffer title;
+	public void startElement (String uri, String name, String qName, Attributes atts) throws SAXException
+	{
+		if(name.equalsIgnoreCase("summary")){
+			in_summary=true;
+			summary=new StringBuffer();
+		}
+		if(name.equalsIgnoreCase("content")){
+			in_content=true;
+			content=new StringBuffer();
+		}
+		if(name.equalsIgnoreCase("title")){
+			in_title=true;
+			title=new StringBuffer();
+		}
+
+		super.startElement(uri,name,qName,atts);
+	}
+
+	public void characters(char[] ch, int start, int length) throws SAXException {
+		if(in_summary){
+			summary.append(ch,start,length);
+		}
+		if(in_content){
+			content.append(ch,start,length);
+		}
+		if(in_title){
+			title.append(ch,start,length);
+		}
+		super.characters( ch, start, length);
+	}
+
+	public void endElement (String uri, String name, String qName) throws SAXException
+	{
+		if(name.equalsIgnoreCase("summary")){
+			in_summary=false;
+		}
+		if(name.equalsIgnoreCase("content")){
+			in_content=false;
+		}
+		if(name.equalsIgnoreCase("title")){
+			in_title=false;
+		}
+		if(content!=null && name.equalsIgnoreCase("entry") && !content.toString().equalsIgnoreCase("")){
+			if (title!=null && content.toString().trim().equalsIgnoreCase(title.toString().trim())){
+				warning(new SAXParseException("atom:content SHOULD NOT duplicate atom:title",getLocator()));
+			}
+			if (summary!=null && content.toString().trim().equalsIgnoreCase(summary.toString().trim())){
+				warning(new SAXParseException("atom:content SHOULD NOT duplicate summary:title",getLocator()));
+			}
+			content=summary=title=null;
+		}
+
+		super.endElement(uri,name,qName);
+	}
+}
+
+/* REQUIREMENT : Check for the presence of a link to a single catalog root */
+class OPDSRequirementRootLink extends OPDSRequirementFilter {
+
+	private boolean in_entry;
+	private int root_count=0;
+
+	public void startElement (String uri, String name, String qName, Attributes atts) throws SAXException
+	{
+		if(name.equalsIgnoreCase("entry")){
+			in_entry=true;
+		}
+		if(!in_entry){
+			if(name.equalsIgnoreCase("link")){
+				String rel=atts.getValue("rel");
+				String href=atts.getValue("href");
+
+				if(rel!=null && rel.contains("start")){
+					root_count++;
+				}
+				if(root_count > 1){
+					warning(new SAXParseException("There SHOULD only be one root link",getLocator()));
+				}
+			}
+		}
+
+		super.startElement(uri,name,qName,atts);
+	}
+
+	public void endElement (String uri, String name, String qName) throws SAXException
+	{
+		if(name.equalsIgnoreCase("entry")){
+			in_entry=false;
+		}
+
+		super.endElement(uri,name,qName);
+	}
+	public void endDocument () throws SAXException
+	{
+		if(root_count==0){
+			warning(new SAXParseException("There SHOULD be a root catalog link (rel=\"start\")",getLocator()));
+		}
+		super.endDocument();
+	}
+}
+
+/* REQUIREMENT :  */
+class OPDSRequirementLinkProfileKind extends OPDSRequirementFilter {
+
+	public void startElement (String uri, String name, String qName, Attributes atts) throws SAXException
+	{
+		if(name.equalsIgnoreCase("link")){
+			String rel=atts.getValue("rel");
+			String type=atts.getValue("type");
+
+			if(type.contains("application/atom+xml")){
+				if(!type.contains("profile=opds-catalog")){
+					warning(new SAXParseException("OPDS links SHOULD use profile parameter in type",getLocator()));
+				}
+				if(!type.contains("kind=") && !type.contains("type=entry")){
+					warning(new SAXParseException("OPDS links SHOULD use kind parameter in type",getLocator()));
+				}
+			}
+		}
+
+		super.startElement(uri,name,qName,atts);
+	}
 }
