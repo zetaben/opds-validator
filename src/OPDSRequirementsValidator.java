@@ -4,6 +4,8 @@ import org.xml.sax.InputSource;
 import org.xml.sax.*;
 import org.xml.sax.helpers.*;
 
+import com.thaiopensource.xml.sax.CountingErrorHandler;
+
 
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
@@ -34,14 +36,15 @@ public class OPDSRequirementsValidator {
 			}
 
 			tail.setParent(XMLReaderFactory.createXMLReader());
+			CountingErrorHandler eh=null;
 			if (getErrorHandler()!=null) {
-				head.setErrorHandler(getErrorHandler());
+				eh=new CountingErrorHandler(getErrorHandler());
 			}else{
-				DefaultHandler handler = new DefaultHandler();
-				head.setErrorHandler(handler);
+				eh=new CountingErrorHandler(new DefaultHandler());
 			}
+			head.setErrorHandler(eh);
 			head.parse(l);
-			return true;
+			return !eh.getHadErrorOrFatalError();
 		}catch(Exception e){
 			System.err.println(e);
 		}
@@ -352,8 +355,6 @@ class OPDSRequirementDublinCore extends OPDSRequirementFilter {
 					subject=true;
 				}
 				if(name.equalsIgnoreCase("title")){
-					System.err.println("FOIND dc:tit");
-
 					title=true;
 				}
 			}else{
