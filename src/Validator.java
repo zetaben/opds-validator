@@ -15,10 +15,13 @@ import com.thaiopensource.validate.ValidationDriver;
 import com.thaiopensource.validate.rng.CompactSchemaReader;
 import com.thaiopensource.xml.sax.ErrorHandlerImpl;
 import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
+import org.xml.sax.*;
+import com.thaiopensource.util.UriOrFile;
+
 
 import java.io.IOException;
 import java.io.File;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,12 +36,7 @@ public class Validator {
 	public void SetEncoding(String e){this.encoding=e;}
 	public void SetOPDSVersion(String e){this.opds_version=e;}
 
-	/** Validate an OPDS Stream 
-	 * @params f File to be validated
-	 * @return boolean Had error while validating
-	 */
-	public boolean validate(String [] args){
-	
+	private boolean validateByDirectOrFilenames(String[] args,String[] names){
 		SchemaReader sr = CompactSchemaReader.getInstance();
 		PropertyMapBuilder properties = new PropertyMapBuilder();
 		properties.put(ValidateProperty.ERROR_HANDLER, eh);
@@ -47,6 +45,7 @@ public class Validator {
 		OPDSRequirementsValidator opds_val=new OPDSRequirementsValidator();
 		opds_val.setErrorHandler(eh);
 
+
 		try {
 			ValidationDriver driver = new ValidationDriver(properties.toPropertyMap(), sr);
 			InputSource in = ValidationDriver.uriOrFileInputSource("res/opds_v"+opds_version+".rnc");
@@ -54,7 +53,18 @@ public class Validator {
 				in.setEncoding(encoding);
 			if (driver.loadSchema(in)) {
 				for (int i = 0; i < args.length; i++) {
-					if (!driver.validate(ValidationDriver.uriOrFileInputSource(args[i])) || !opds_val.validate(ValidationDriver.uriOrFileInputSource(args[i])))
+					InputSource source1,source2;
+					if( names.length==0){
+						source2=source1=ValidationDriver.uriOrFileInputSource(args[i]);
+					}else{
+						source1=new InputSource(new StringReader(args[i]));
+						source2=new InputSource(new StringReader(args[i]));
+						source1.setSystemId(names[i]);
+						source2.setSystemId(names[i]);
+						source1.setPublicId(names[i]);
+						source2.setPublicId(names[i]);
+					}
+					if (!driver.validate(source1) || !opds_val.validate(source2))
 						hadError = true;
 				}
 			}
@@ -71,6 +81,23 @@ public class Validator {
 		}
 		return hadError;
 	}
+	/** Validate an OPDS Stream 
+	 * @params args Files to be validated
+	 * @return boolean Had error while validating
+	 */
+	public boolean validate(String [] args){
+		return validateByDirectOrFilenames(args,new String[0]);
+	}
+
+	/** Validate an OPDS Stream by direct input
+	 * @params args content to be validated
+	 * @params names content idendifier (i.e. filenames )
+	 * @return boolean Had error while validating
+	 */
+	public boolean validate(String[] args, String[] names){
+		return validateByDirectOrFilenames(args,names);
+	}
+
 
 
 	public static void  main(String[] args) {
@@ -85,9 +112,9 @@ public class Validator {
 				switch (op.getOptionChar()) {
 					case 'f': 
 						String fmt=op.getOptionArg();
-							if(fmt.equalsIgnoreCase("json")){
-								eh=new JSONErrorHandlerImpl(System.out);
-							}
+						if(fmt.equalsIgnoreCase("json")){
+							eh=new JSONErrorHandlerImpl(System.out);
+						}
 						break;
 					case 'v':
 						opds_version = op.getOptionArg();
@@ -120,16 +147,37 @@ public class Validator {
 			eh.print("option_missing_argument"+ op.getOptionCharString());
 			System.exit(2);
 		}
-		    args = op.getRemainingArgs();
+		args = op.getRemainingArgs();
 
 
 		Validator v=new Validator();
 		if (encoding!=null){
-		v.SetEncoding(encoding);
+			v.SetEncoding(encoding);
 		}
 		v.SetOPDSVersion(opds_version);
 		v.SetErrorHandler(eh);
-		v.validate(args);
+		if(args.length !=0){
+			v.validate(args);
+		}else{
+			Reader reader = new InputStreamReader(System.in);
+			final char[] buffer = new char[0x1000];
+			StringBuilder out = new StringBuilder();
+			int read=0;
+			try{
+				while(read >=0){
+					read = reader.read(buffer, 0, buffer.length);
+					if (read>0) {
+						out.append(buffer, 0, read);
+					}
+				} 
+				reader.close();
+			}catch(IOException e){
+				e.printStackTrace(System.err);
+			}
+			String[] names={"stdin://"};
+			String[] in={out.toString()};
+			v.validate(in,names);
+		}
 		eh.close();
 	}
 
