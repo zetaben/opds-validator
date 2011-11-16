@@ -28,7 +28,7 @@ import java.util.List;
 
 public class Validator {
 
-	private String opds_version="1.0";
+	private String opds_version="1.1";
 	private String encoding;
 	private ErrorHandlerImpl eh;
 
@@ -104,7 +104,7 @@ public class Validator {
 
 		String encoding=null;
 		OptionParser op = new OptionParser("hv:e:f:", args);
-		String opds_version="1.0";
+		String opds_version="1.1";
 		ErrorHandlerImpl eh = new ErrorHandlerImpl(System.out);
 
 		try {
