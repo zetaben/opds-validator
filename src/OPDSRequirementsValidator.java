@@ -63,6 +63,7 @@ public class OPDSRequirementsValidator {
 
 }
 
+/* TODO a file per class */
 class OPDSRequirementFilter extends XMLFilterImpl {
 	Locator locator;
 	public void setDocumentLocator(Locator locator) {
@@ -75,11 +76,27 @@ class OPDSRequirementFilter extends XMLFilterImpl {
 		return this.locator;
 	}
 
+
 	protected String getLocationString(){
 		if(locator!=null){
 			return ""+locator.getLineNumber()+":"+locator.getColumnNumber();
 		}
 		return "";
+	}
+	
+	private boolean isFeed=false;
+	public void startElement (String uri, String name, String qName, Attributes atts) throws SAXException
+	{
+		if(!isFeed && name.equalsIgnoreCase("feed")){
+			isFeed=true;
+		}
+
+		super.startElement(uri,name,qName,atts);
+	}
+
+	protected boolean isFeed()
+	{
+		return isFeed;
 	}
 
 }
@@ -475,7 +492,7 @@ class OPDSRequirementRootLink extends OPDSRequirementFilter {
 
 	public void startElement (String uri, String name, String qName, Attributes atts) throws SAXException
 	{
-		if(name.equalsIgnoreCase("entry")){
+		if(isFeed() && name.equalsIgnoreCase("entry")){
 			in_entry=true;
 		}
 		if(!in_entry){
@@ -505,7 +522,7 @@ class OPDSRequirementRootLink extends OPDSRequirementFilter {
 	}
 	public void endDocument () throws SAXException
 	{
-		if(root_count==0){
+		if(isFeed() && root_count==0){
 			warning(new SAXParseException("There SHOULD be a root catalog link (rel=\"start\")",getLocator()));
 		}
 		super.endDocument();
