@@ -16,7 +16,7 @@ public class OPDSRequirementsValidator {
 	public boolean validate(InputSource l)  {
 		try{
 
-			XMLFilter[] filters={
+			OPDSRequirementFilter[] filters={
 				/*Very high priority*/
 				new OPDSRequirementLink(),new OPDSRequirementAcquisitionType(), new OPDSRequirementSearchRel(),new OPDSRequirementAcquisitionOrNavigation(),
 				/*High priority*/
@@ -24,6 +24,11 @@ public class OPDSRequirementsValidator {
 				/*Normal priority*/ 
 				new OPDSRequirementContentDuplication(), new OPDSRequirementRootLink(), new OPDSRequirementLinkProfileKind()
 			};
+
+			for(OPDSRequirementFilter f:filters )
+			{
+				f.setOPDSVersion(getOPDSVersion());
+			}
 
 			XMLFilter tail = filters[0];
 			XMLFilter head = tail;
@@ -53,6 +58,8 @@ public class OPDSRequirementsValidator {
 
 	private ErrorHandler eh;
 
+	private String opds_version;
+
 	public void setErrorHandler(ErrorHandler e){
 		eh=e;
 	}
@@ -61,6 +68,15 @@ public class OPDSRequirementsValidator {
 		return eh;
 	}
 
+	public String getOPDSVersion()
+	{
+		return opds_version;
+	}
+
+	public void setOPDSVersion(String version)
+	{
+		opds_version=version;
+	}
 }
 
 /* TODO a file per class */
@@ -98,6 +114,18 @@ class OPDSRequirementFilter extends XMLFilterImpl {
 	{
 		return isFeed;
 	}
+
+	private String opds_version;
+	public String getOPDSVersion()
+	{
+		return opds_version;
+	}
+
+	public void setOPDSVersion(String version)
+	{
+		opds_version=version;
+	}
+	
 
 }
 
@@ -542,7 +570,7 @@ class OPDSRequirementLinkProfileKind extends OPDSRequirementFilter {
 				if(!type.contains("profile=opds-catalog")){
 					warning(new SAXParseException("OPDS links SHOULD use profile parameter in type",getLocator()));
 				}
-				if(!type.contains("kind=") && !type.contains("type=entry")){
+				if("1.1".equals(getOPDSVersion()) && !type.contains("kind=") && !type.contains("type=entry")){
 					warning(new SAXParseException("OPDS links SHOULD use kind parameter in type",getLocator()));
 				}
 			}

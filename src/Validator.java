@@ -44,6 +44,7 @@ public class Validator {
 
 		OPDSRequirementsValidator opds_val=new OPDSRequirementsValidator();
 		opds_val.setErrorHandler(eh);
+		opds_val.setOPDSVersion(opds_version);
 
 
 		try {
