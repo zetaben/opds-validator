@@ -1,5 +1,7 @@
 plugins {
+    java
     application
+    libs.plugins.shadow
 }
 
 repositories {
