@@ -7,8 +7,8 @@ repositories {
 }
 
 dependencies {
-    implementation("org.relaxng:jing:20220510")
-    implementation("org.json:json:20220924")
+    implementation(libs.jing)
+    implementation(libs.json)
 }
 
 application {
